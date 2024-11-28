@@ -64,7 +64,8 @@ git clone https://github.com/DepthAnything/Depth-Anything-V2
 # Download the Depth-Anything-V2-Large checkpoint
 wget https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth?download=true
 ```
-Save the checkpoint to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
+
+Save the checkpoints to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
 
 ## Runnig
 
@@ -72,6 +73,14 @@ To control camera motion on images, execute the following script
 ```
 sh image_control.sh
 ```
+
+## TODO
+
+- [x] Release models and weight;
+- [x] Release pipelines for single image camera motion control;
+- [] Release pipelines for video camera motion control;
+- [] Release pipelines for video editing;
+- [] Release training pipeline
 
 
 
