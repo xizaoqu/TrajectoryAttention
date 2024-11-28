@@ -78,9 +78,9 @@ sh image_control.sh
 
 - [x] Release models and weight;
 - [x] Release pipelines for single image camera motion control;
-- [] Release pipelines for video camera motion control;
-- [] Release pipelines for video editing;
-- [] Release training pipeline
+- [ ] Release pipelines for video camera motion control;
+- [ ] Release pipelines for video editing;
+- [ ] Release training pipeline
 
 
 

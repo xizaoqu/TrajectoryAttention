@@ -1,0 +1,11 @@
+diffusers==0.27.0
+xformers==0.0.16
+opencv-python-headless==4.5.5.64
+numpy==1.23.5
+matplotlib
+numba
+huggingface_hub==0.21.0
+triton==3.1.0
+transformers==4.33.2
+accelerate==1.1.1
+imageio[ffmpeg]
