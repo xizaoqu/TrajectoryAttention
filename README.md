@@ -90,7 +90,15 @@ sh image_control.sh
 
 If you find our work helpful, please cite:
 
-to be updated
+@misc{xiao2024trajectoryattentionfinegrainedvideo,
+      title={Trajectory Attention for Fine-grained Video Motion Control}, 
+      author={Zeqi Xiao and Wenqi Ouyang and Yifan Zhou and Shuai Yang and Lei Yang and Jianlou Si and Xingang Pan},
+      year={2024},
+      eprint={2411.19324},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2411.19324}, 
+}
 
 <!-- ```bibtex
 @article{xiao2024video,
