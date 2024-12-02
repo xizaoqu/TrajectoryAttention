@@ -90,6 +90,7 @@ sh image_control.sh
 
 If you find our work helpful, please cite:
 
+```bibtex
 @misc{xiao2024trajectoryattentionfinegrainedvideo,
       title={Trajectory Attention for Fine-grained Video Motion Control}, 
       author={Zeqi Xiao and Wenqi Ouyang and Yifan Zhou and Shuai Yang and Lei Yang and Jianlou Si and Xingang Pan},
@@ -99,15 +100,7 @@ If you find our work helpful, please cite:
       primaryClass={cs.CV},
       url={https://arxiv.org/abs/2411.19324}, 
 }
-
-<!-- ```bibtex
-@article{xiao2024video,
-  title={Video Diffusion Models are Training-free Motion Interpreter and Controller},
-  author={Xiao, Zeqi and Zhou, Yifan and Yang, Shuai and Pan, Xingang},
-  journal={arXiv preprint arXiv:2405.14864},
-  year={2024}
-} -->
-<!-- ``` -->
+```
 
 ## 👏 Acknowledgements
 - [SVD](https://github.com/Stability-AI/generative-models): Our model is tuned from SVD.
