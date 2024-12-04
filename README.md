@@ -71,6 +71,8 @@ cp depth_anything/run.py Depth-Anything-V2/run.py
 
 Save the checkpoints to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
 
+Also, download SVD from [here](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/tree/main) and modify the checkpoint path.
+
 ## Runnig
 
 To control camera motion on images, execute the following script
