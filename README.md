@@ -63,6 +63,8 @@ Download model weights from [huggingface](https://huggingface.co/zeqixiao/Trajec
 git clone https://github.com/DepthAnything/Depth-Anything-V2
 # Download the Depth-Anything-V2-Large checkpoint
 wget https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth?download=true
+# Overwrite the run.py
+cp depth_anything/run.py Depth-Anything-V2/run.py
 ```
 
 Save the checkpoints to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
