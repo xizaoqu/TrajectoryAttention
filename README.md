@@ -23,6 +23,8 @@
   </a>
 </p>
 
+https://github.com/user-attachments/assets/c4a2243d-68d0-4993-ba33-14c2572de6a7
+
 
 ## 🏠 About
 <!-- ![Teaser](assets/teaser.jpg) -->
@@ -90,16 +92,17 @@ sh image_control.sh
 
 If you find our work helpful, please cite:
 
-to be updated
-
-<!-- ```bibtex
-@article{xiao2024video,
-  title={Video Diffusion Models are Training-free Motion Interpreter and Controller},
-  author={Xiao, Zeqi and Zhou, Yifan and Yang, Shuai and Pan, Xingang},
-  journal={arXiv preprint arXiv:2405.14864},
-  year={2024}
-} -->
-<!-- ``` -->
+```bibtex
+@misc{xiao2024trajectoryattentionfinegrainedvideo,
+      title={Trajectory Attention for Fine-grained Video Motion Control}, 
+      author={Zeqi Xiao and Wenqi Ouyang and Yifan Zhou and Shuai Yang and Lei Yang and Jianlou Si and Xingang Pan},
+      year={2024},
+      eprint={2411.19324},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2411.19324}, 
+}
+```
 
 ## 👏 Acknowledgements
 - [SVD](https://github.com/Stability-AI/generative-models): Our model is tuned from SVD.
