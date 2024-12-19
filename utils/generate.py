@@ -6,9 +6,11 @@ import os
 from models.unet import UNetSpatioTemporalConditionModel
 import numpy as np
 
-def load_pipeline(unet_path, svd_path, checkpoint):
+def load_pipeline(checkpoint):
+    svd_path = 'stabilityai/stable-video-diffusion-img2vid-xt'
     unet = UNetSpatioTemporalConditionModel.from_pretrained(
-        unet_path,
+        svd_path,
+        subfolder='unet',
         torch_dtype=torch.float16,
         low_cpu_mem_usage=False,
         device_map=None,
