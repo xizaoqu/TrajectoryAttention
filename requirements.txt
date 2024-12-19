@@ -5,7 +5,7 @@ numpy==1.23.5
 matplotlib
 numba
 huggingface_hub==0.21.0
-triton==3.1.0
+# triton==3.1.0
 transformers==4.33.2
 accelerate==1.1.1
 imageio[ffmpeg]
