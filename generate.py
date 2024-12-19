@@ -34,22 +34,13 @@ parser.add_argument(
     type=str,
 )
 
-parser.add_argument(
-    "--svd_path",
-    type=str,
-)
-
-parser.add_argument(
-    "--svd_unet_path",
-    type=str,
-)
 
 args = parser.parse_args()
 
 unet_path = args.svd_unet_path
 svd_path = args.svd_path
 checkpoint = args.checkpoint
-pipeline = load_pipeline(unet_path, svd_path, checkpoint)
+pipeline = load_pipeline(checkpoint)
 
 image_path = os.listdir(args.image_folder)
 assert len(image_path) == 1
