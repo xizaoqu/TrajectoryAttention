@@ -37,8 +37,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-unet_path = args.svd_unet_path
-svd_path = args.svd_path
 checkpoint = args.checkpoint
 pipeline = load_pipeline(checkpoint)
 
