@@ -26,6 +26,4 @@ python generate.py \
   --trajectory_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}/trajectories \
   --num_frames 25 \
   --output_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE} \
-  --checkpoint checkpoints/trajattn_temp.pth \
-  --svd_unet_path put_your_path_here \
-  --svd_path put_your_path_here
+  --checkpoint checkpoints/trajattn_temp.pth 
