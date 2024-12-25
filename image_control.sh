@@ -1,6 +1,6 @@
 ITEM=ride
 CAMERA_MOTION_MODE=horizontal
-DEGREE=0.5
+DEGREE=-0.5
 
 set -e
 
