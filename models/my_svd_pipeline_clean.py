@@ -16,6 +16,7 @@ from typing import Callable, Dict, List, Optional, Union
 from diffusers.pipelines.stable_video_diffusion.pipeline_stable_video_diffusion import _append_dims, StableVideoDiffusionPipelineOutput
 from PIL import Image
 import torch.nn.functional as F
+from einops import rearrange
 
 def tensor2vid(video: torch.Tensor, processor, output_type="np"):
     batch_size, channels, num_frames, height, width = video.shape
@@ -311,7 +312,7 @@ class MotionVectorAttnProcessor1_0(XFormersAttnProcessor):
 
         # sample
         traj_sample_num = int(width*height/self.sparsity_factor)
-        traj_sample_idx = random_unique_samples(self.trajectory.shape[1], traj_sample_num*8)
+        traj_sample_idx = random_unique_samples(self.trajectory.shape[1], traj_sample_num*32)
         trajectory = self.trajectory.to(hidden_states.device)[:,traj_sample_idx]
         trajectory[..., 0] *= width / self.origin_size[0]
         trajectory[..., 1] *= height / self.origin_size[1]
@@ -556,11 +557,29 @@ def set_temporal_attn(unet, trajectory, occ_mask, height, width,
 
 class My_SVD(StableVideoDiffusionPipeline):
     def __init__(self, vae: AutoencoderKLTemporalDecoder, image_encoder: CLIPVisionModelWithProjection, unet: UNetSpatioTemporalConditionModel, 
-                 scheduler: EulerDiscreteScheduler, feature_extractor: CLIPImageProcessor, append_occ_mask=False, filter_predicted_occ=False):
+                 scheduler: EulerDiscreteScheduler, feature_extractor: CLIPImageProcessor, 
+                 use_nvs_solver = False):
+        self.use_nvs_solver = use_nvs_solver
+        if self.use_nvs_solver:
+            from utils.nvs_solver_schedule import EulerDiscreteScheduler
+            scheduler = EulerDiscreteScheduler(
+                beta_end=scheduler.beta_end,
+                beta_schedule=scheduler.beta_schedule,
+                beta_start=scheduler.beta_start,
+                interpolation_type=scheduler.interpolation_type,
+                num_train_timesteps=scheduler.num_train_timesteps,
+                prediction_type=scheduler.prediction_type,
+                rescale_betas_zero_snr=scheduler.rescale_betas_zero_snr,
+                sigma_max=scheduler.sigma_max,
+                sigma_min=scheduler.sigma_min,
+                steps_offset=scheduler.steps_offset,
+                timestep_spacing=scheduler.timestep_spacing,
+                timestep_type=scheduler.timestep_type,
+                trained_betas=scheduler.trained_betas,
+                use_karras_sigmas=scheduler.use_karras_sigmas,                
+            )
         super().__init__(vae, image_encoder, unet, scheduler, feature_extractor)
-        self.flow_mode = None
-        self.append_occ_mask = append_occ_mask
-        self.filter_predicted_occ = filter_predicted_occ
+        
 
     def set_flow_path(self, trajectory, occ_mask, height, width):
         attn_processor_dict = {}
@@ -572,10 +591,14 @@ class My_SVD(StableVideoDiffusionPipeline):
                 attn_processor_dict[k] = VanillaAttnProcessor(name=k)
         self.unet.set_attn_processor(attn_processor_dict)
 
-    @torch.no_grad()
     def __call__(
         self,
         image,
+        temp_cond=None,
+        mask=None,
+        lambda_ts=None,
+        lr=0.02,
+        weight_clamp=0.6,
         height: int = 576,
         width: int = 1024,
         num_frames: Optional[int] = None,
@@ -592,10 +615,7 @@ class My_SVD(StableVideoDiffusionPipeline):
         output_type: Optional[str] = "pil",
         callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
         callback_on_step_end_tensor_inputs: List[str] = ["latents"],
-        return_dict: bool = True,
-        save_last_frame=False,
-        last_frame_latent=None,
-        start_step=0,
+        return_dict: bool = True
     ):
         r"""
         The call function to the pipeline for generation.
@@ -683,7 +703,8 @@ class My_SVD(StableVideoDiffusionPipeline):
         self._guidance_scale = max_guidance_scale
 
         # 3. Encode input image
-        image_embeddings = self._encode_image(image, device, num_videos_per_prompt, self.do_classifier_free_guidance)
+        with torch.no_grad():
+            image_embeddings = self._encode_image(image, device, num_videos_per_prompt, self.do_classifier_free_guidance)
 
         # NOTE: Stable Video Diffusion was conditioned on fps - 1, which is why it is reduced here.
         # See: https://github.com/Stability-AI/generative-models/blob/ed0997173f98eaf8f4edf7ba5fe8f15c6b877fd3/scripts/sampling/simple_video_sample.py#L188
@@ -691,6 +712,16 @@ class My_SVD(StableVideoDiffusionPipeline):
 
         # 4. Encode input image using VAE
         image = self.image_processor.preprocess(image, height=height, width=width).to(device)
+
+        if self.use_nvs_solver:
+            mask = mask.cuda()
+            mask = mask.unsqueeze(1).unsqueeze(0).repeat(1,1,4,1,1)
+            temp_cond_list = []
+            for i in range(len(temp_cond)):
+                temp_cond_ = self.image_processor.preprocess(temp_cond[i], height=height, width=width)
+                temp_cond_list.append(temp_cond_)
+            temp_cond = torch.cat(temp_cond_list,dim=0)
+
         noise = randn_tensor(image.shape, generator=generator, device=device, dtype=image.dtype)
         image = image + noise_aug_strength * noise
 
@@ -698,13 +729,27 @@ class My_SVD(StableVideoDiffusionPipeline):
         if needs_upcasting:
             self.vae.to(dtype=torch.float32)
 
-        image_latents = self._encode_vae_image(
-            image,
-            device=device,
-            num_videos_per_prompt=num_videos_per_prompt,
-            do_classifier_free_guidance=self.do_classifier_free_guidance,
-        )
+        with torch.no_grad():
+            image_latents = self._encode_vae_image(
+                image,
+                device=device,
+                num_videos_per_prompt=num_videos_per_prompt,
+                do_classifier_free_guidance=self.do_classifier_free_guidance,
+            )
+
         image_latents = image_latents.to(image_embeddings.dtype)
+        image_latents = rearrange(image_latents, "(b f) c h w -> b f c h w",f=1)
+        if self.use_nvs_solver:
+            with torch.no_grad():
+                temp_cond_latents_list = []
+                for i in range(temp_cond.shape[0]):
+                    temp_cond_latents_ = self._encode_vae_image(temp_cond[i:i+1,:,:,:], device, 
+                                                                num_videos_per_prompt, self.do_classifier_free_guidance) # [12, 4, 72, 128]
+                    temp_cond_latents_ = rearrange(temp_cond_latents_, "(b f) c h w -> b f c h w",b=2)
+                    temp_cond_latents_list.append(temp_cond_latents_)
+            temp_cond_latents = torch.cat(temp_cond_latents_list,dim=1)
+           
+            temp_cond_latents  = torch.cat((image_latents,temp_cond_latents),dim=1)
 
         # cast back to fp16 if needed
         if needs_upcasting:
@@ -712,7 +757,7 @@ class My_SVD(StableVideoDiffusionPipeline):
 
         # Repeat the image latents for each frame so we can concatenate them with the noise
         # image_latents [batch, channels, height, width] ->[batch, num_frames, channels, height, width]
-        image_latents = image_latents.unsqueeze(1).repeat(1, num_frames, 1, 1, 1)
+        image_latents = image_latents.repeat(1, num_frames, 1, 1, 1)
 
         batch, num_frames, channels, h, w = image_latents.shape
      
@@ -746,13 +791,6 @@ class My_SVD(StableVideoDiffusionPipeline):
             latents,
         )
 
-        if last_frame_latent is not None:
-            latents[:,:,0] = last_frame_latent[0].to(device)
-
-        if save_last_frame:
-            last_frame = []
-            last_frame.append(latents[:,:,-1].clone().detach().cpu())
-
         # 8. Prepare guidance scale
         guidance_scale = torch.linspace(min_guidance_scale, max_guidance_scale, num_frames).unsqueeze(0)
         guidance_scale = guidance_scale.to(device, latents.dtype)
@@ -765,68 +803,125 @@ class My_SVD(StableVideoDiffusionPipeline):
         self._num_timesteps = len(timesteps)
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                if start_step is not None and i<start_step:
-                    continue
 
-                # expand the latents if we are doing classifier free guidance
-                latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
-                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                if self.use_nvs_solver:
+                    for g in range(1):
+                        grads = []
+                        latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
+                        latent_model_input_test1=latent_model_input
+                        latent_model_input = self.scheduler.scale_model_input(latent_model_input, t,step_i=i)
+                        latent_model_input_test2=latent_model_input
+                        latent_model_input = torch.cat([latent_model_input[0:1], image_latents[1:2]], dim=2)
+                        latent_model_input2 = latent_model_input
+                        for ii in range(4):
+                            with torch.enable_grad(): 
+                            
+                                latents.requires_grad_(True)
+                                latents.retain_grad()
+                                image_latents.requires_grad_(True)         
+                                latent_model_input = latent_model_input.detach()
+                                latent_model_input.requires_grad = True
 
-                if self.append_occ_mask:
-                    occ_mask = image_latents.sum(2)==0
-                    latent_model_input = torch.cat([latent_model_input, image_latents, occ_mask[:,:,None]], dim=2)
-                else:
-                    # Concatenate image_latents over channels dimension
+                                named_param = list(self.unet.named_parameters())
+                                for n,p in named_param:
+                                    p.requires_grad = False
+                                if ii == 0:
+                                    latent_model_input1 = latent_model_input[0:1,:,:,:40,:72]
+                                    latents1 = latents[0:1,:,:,:40,:72]
+                                    temp_cond_latents1 = temp_cond_latents[:2,:,:,:40,:72]
+                                    mask1 = mask[0:1,:,:,:40,:72]
+                                elif ii ==1:
+                                    latent_model_input1 = latent_model_input[0:1,:,:,24:,:72]
+                                    latents1 = latents[0:1,:,:,24:,:72]
+                                    temp_cond_latents1 = temp_cond_latents[:2,:,:,24:,:72]
+                                    mask1 = mask[0:1,:,:,24:,:72]
+                                elif ii ==2:
+                                    latent_model_input1 = latent_model_input[0:1,:,:,:40,56:]
+                                    latents1 = latents[0:1,:,:,:40,56:]
+                                    temp_cond_latents1 = temp_cond_latents[:2,:,:,:40,56:]
+                                    mask1 = mask[0:1,:,:,:40,56:]
+                                elif ii ==3:
+                                    latent_model_input1 = latent_model_input[0:1,:,:,24:,56:]
+                                    latents1 = latents[0:1,:,:,24:,56:]
+                                    temp_cond_latents1 = temp_cond_latents[:2,:,:,24:,56:]
+                                    mask1 = mask[0:1,:,:,24:,56:]
+                                image_embeddings1 = image_embeddings[0:1,:,:]
+                                added_time_ids1 =added_time_ids[0:1,:]
+                                torch.cuda.empty_cache()
+                                noise_pred_t = self.unet(
+                                    latent_model_input1,
+                                    t,
+                                    encoder_hidden_states=image_embeddings1,
+                                    added_time_ids=added_time_ids1,
+                                    return_dict=False,
+                                    use_traj=False
+                                )[0]
+                            
+                                output = self.scheduler.step_single(noise_pred_t, t, latents1,temp_cond_latents1,mask1,lambda_ts,step_i=i,lr=lr,weight_clamp=weight_clamp,compute_grad=True)
+                                grad = output.grad
+                                grads.append(grad)
+                                
+                        grads1 = torch.cat((grads[0],grads[1][:,:,:,16:,:]),-2)                
+                        grads2 = torch.cat((grads[2],grads[3][:,:,:,16:,:]),-2)
+                        grads3 = torch.cat((grads1,grads2[:,:,:,:,16:]),-1)
+                        latents = latents - grads3.half()
+
+                with torch.no_grad():
+                    latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
+                    
+                    if self.use_nvs_solver:
+                        latent_model_input = self.scheduler.scale_model_input(latent_model_input, t, step_i=i)
+                    else:
+                        latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+
                     latent_model_input = torch.cat([latent_model_input, image_latents], dim=2)
 
-                # predict the noise residual
-                noise_pred = self.unet(
-                    latent_model_input,
-                    t,
-                    encoder_hidden_states=image_embeddings,
-                    added_time_ids=added_time_ids,
-                    return_dict=False,
-                    use_traj = True
-                )[0]
+                    # predict the noise residual
+                    noise_pred = self.unet(
+                        latent_model_input,
+                        t,
+                        encoder_hidden_states=image_embeddings,
+                        added_time_ids=added_time_ids,
+                        return_dict=False,
+                        use_traj = True
+                    )[0]
 
-                # if i>20:
-                #     import pdb;pdb.set_trace()
+                    if self.do_classifier_free_guidance:
+                        noise_pred_uncond, noise_pred_cond = noise_pred.chunk(2)
+                        noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_cond - noise_pred_uncond)
 
-                # perform guidance
-                if self.do_classifier_free_guidance:
-                    noise_pred_uncond, noise_pred_cond = noise_pred.chunk(2)
-                    noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_cond - noise_pred_uncond)
+                    # compute the previous noisy sample x_t -> x_t-1
+                    if self.use_nvs_solver:
+                        latents = self.scheduler.step_single(noise_pred, t, latents,temp_cond_latents,mask,lambda_ts,step_i=i,compute_grad=False).prev_sample
+                    else:
+                        latents = self.scheduler.step(noise_pred, t, latents).prev_sample
 
-                # compute the previous noisy sample x_t -> x_t-1
-                latents = self.scheduler.step(noise_pred, t, latents).prev_sample
+                    if callback_on_step_end is not None:
+                        callback_kwargs = {}
+                        for k in callback_on_step_end_tensor_inputs:
+                            callback_kwargs[k] = locals()[k]
+                        callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
 
-                if callback_on_step_end is not None:
-                    callback_kwargs = {}
-                    for k in callback_on_step_end_tensor_inputs:
-                        callback_kwargs[k] = locals()[k]
-                    callback_outputs = callback_on_step_end(self, i, t, callback_kwargs)
+                        latents = callback_outputs.pop("latents", latents)
 
-                    latents = callback_outputs.pop("latents", latents)
-
-                if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
-                    progress_bar.update()
+                    if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
+                        progress_bar.update()
 
         if not output_type == "latent":
+            
             # cast back to fp16 if needed
             if needs_upcasting:
                 self.vae.to(dtype=torch.float16)
-            frames = self.decode_latents(latents, num_frames, decode_chunk_size)
+            with torch.no_grad():
+                frames = self.decode_latents(latents, num_frames, decode_chunk_size)
             frames = tensor2vid(frames, self.image_processor, output_type=output_type)
         else:
             frames = latents
 
         self.maybe_free_model_hooks()
 
+
         if not return_dict:
             return frames
-
-
-        if save_last_frame:
-            return StableVideoDiffusionPipelineOutput(frames=frames), last_frame
-
+        
         return StableVideoDiffusionPipelineOutput(frames=frames)

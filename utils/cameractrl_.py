@@ -11,6 +11,7 @@ import os
 import numpy as np
 import PIL.Image 
 from numba import njit
+import cv2
 
 @njit
 def mask_occlusion_traj(depth, trans_depth, trans_coordinates, trans_valid):
@@ -88,8 +89,8 @@ def forward_warp(frame1: np.ndarray, mask1: Optional[np.ndarray], depth1: np.nda
     trans_valid = (trans_depth1>0)
     trans_valid = mask_occlusion_traj(depth1, trans_depth1, trans_coordinates, trans_valid)
 
-    # warped_frame2, mask2 = bilinear_splatting(frame1, mask1, trans_depth1, flow12, None, is_image=True)
-    warped_frame2, mask2 = None, None
+    warped_frame2, mask2 = bilinear_splatting(frame1, mask1, trans_depth1, flow12, None, is_image=True)
+    # warped_frame2, mask2 = None, None
 
     return warped_frame2, mask2,flow12, trans_coordinates, trans_valid
 
@@ -295,8 +296,6 @@ def generate_camera_poses(num_poses, angle_step, major_radius, minor_radius, cam
     return poses
 
 def save_warped_image(save_path,images_lists,depth_lists,num_frames, degrees_per_frame,major_radius, minor_radius,camera_motion_mode):
-
-    num_frames = 25
     poses = generate_camera_poses(num_frames, degrees_per_frame,major_radius, minor_radius,camera_motion_mode)
 
     near=0.0001
@@ -310,8 +309,6 @@ def save_warped_image(save_path,images_lists,depth_lists,num_frames, degrees_per
     pose_s = poses[0]
     cond_image = []
     masks = []
-    flow12_list = []
-    depth_list = []
 
     trans_coordinates_list = []
     trans_valid_list = []
@@ -323,31 +320,30 @@ def save_warped_image(save_path,images_lists,depth_lists,num_frames, degrees_per
         depth[depth < 1e-5] = 1e-5
         depth = 10000./depth 
         depth = np.clip(depth, near, far)
-        depth_list.append(depth.copy())
+
         warped_frame2, mask2,flow12, trans_coordinates, trans_valid = forward_warp(image, None, depth, pose_s, pose_t, K, None)
 
         trans_coordinates_list.append(trans_coordinates)
         trans_valid_list.append(trans_valid)
 
-        # flow12_list.append(flow12.copy())
-        # np.save(os.path.join(save_path,str(i).zfill(4)+"_flow.npy"), flow12)
+        np.save(os.path.join(save_path,str(i).zfill(4)+"_flow.npy"), flow12)
 
-        # mask = 1-mask2
-        # mask[mask < 0.5] = 0
-        # mask[mask >= 0.5] = 1
-        # mask = np.repeat(mask[:,:,np.newaxis]*255.,repeats=3,axis=2)
+        mask = 1-mask2
+        mask[mask < 0.5] = 0
+        mask[mask >= 0.5] = 1
+        mask = np.repeat(mask[:,:,np.newaxis]*255.,repeats=3,axis=2)
     
-        # kernel = np.ones((5,5), np.uint8)
-        # mask_erosion = cv2.dilate(np.array(mask), kernel, iterations = 1)
-        # mask_erosion = PIL.Image.fromarray(np.uint8(mask_erosion))
-        # mask_erosion.save(os.path.join(save_path,str(i).zfill(4)+"_mask.png"))
+        kernel = np.ones((5,5), np.uint8)
+        mask_erosion = cv2.dilate(np.array(mask), kernel, iterations = 1)
+        mask_erosion = PIL.Image.fromarray(np.uint8(mask_erosion))
+        mask_erosion.save(os.path.join(save_path,str(i).zfill(4)+"_mask.png"))
 
-        # mask_erosion_ = np.array(mask_erosion)/255.
-        # mask_erosion_[mask_erosion_ < 0.5] = 0
-        # mask_erosion_[mask_erosion_ >= 0.5] = 1
-        # warped_frame2 = PIL.Image.fromarray(np.uint8(warped_frame2))
-        # warped_frame2 = PIL.Image.fromarray(np.uint8(warped_frame2*(1-mask_erosion_)))
-        # warped_frame2.save(os.path.join(save_path,str(i).zfill(4)+".png"))
+        mask_erosion_ = np.array(mask_erosion)/255.
+        mask_erosion_[mask_erosion_ < 0.5] = 0
+        mask_erosion_[mask_erosion_ >= 0.5] = 1
+        warped_frame2 = PIL.Image.fromarray(np.uint8(warped_frame2))
+        warped_frame2 = PIL.Image.fromarray(np.uint8(warped_frame2*(1-mask_erosion_)))
+        warped_frame2.save(os.path.join(save_path,str(i).zfill(4)+".png"))
 
         # cond_image.append(warped_frame2.copy())
 
@@ -376,12 +372,10 @@ def save_warped_image(save_path,images_lists,depth_lists,num_frames, degrees_per
     return image_o,masks,cond_image
 
 def cameractrl(image_path, depth_path, save_path, num_frames, degrees_per_frame=-0.5, major_radius=200, minor_radius=200, camera_motion_mode='horizontal'):
+    
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    images_lists = [image_path] * num_frames
-    depth_lists = [depth_path] * num_frames
-
-    save_warped_image(save_path,images_lists,depth_lists,num_frames,
+    save_warped_image(save_path,image_path,depth_path,num_frames,
                                             degrees_per_frame,major_radius, minor_radius,camera_motion_mode)
     print(f"Trajectory extraction finished, saved to {save_path}")
