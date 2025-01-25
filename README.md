@@ -76,13 +76,21 @@ To control camera motion on images, execute the following script
 sh image_control.sh
 ```
 
+To control camera motion on videos, execute the following script
+```
+sh video_control.sh
+```
+
+To do video editing, execute the following script
+```
+sh video_editing.sh
+```
 ## TODO
 
 - [x] Release models and weight;
 - [x] Release pipelines for single image camera motion control;
-- [ ] Release pipelines for video camera motion control;
-- [ ] Release pipelines for video editing;
-- [ ] Release training pipeline
+- [x] Release pipelines for video camera motion control;
+- [x] Release pipelines for video editing;
 
 
 

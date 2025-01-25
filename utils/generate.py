@@ -92,8 +92,7 @@ def generate(pipeline, flow_path, image_path, output_folder, num_frames,
         lambda_ts = None
         cond_image = None
 
-
-
+    # import pdb;pdb.set_trace()
     frames = pipeline(image, decode_chunk_size=8, num_inference_steps=num_inference_steps, generator=generator, 
                     num_frames=num_frames, noise_aug_strength=0.02, 
                     height=height, width=width, motion_bucket_id=127, 

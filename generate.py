@@ -37,7 +37,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--use_nvs_solver",
-    type=str,
+    action='store_true'
 )
 
 parser.add_argument(

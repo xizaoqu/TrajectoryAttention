@@ -36,20 +36,23 @@ set -e
 #   --merged_trajectory_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}_merged/trajectories
 
 # # generaiton
-python generate.py \
-  --image_folder data/${ITEM}/images \
-  --trajectory_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}_merged/trajectories \
-  --num_frames 25 \
-  --output_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}_merged \
-  --checkpoint checkpoints/trajattn_temp.pth \
-  --use_nvs_solver true \
-  --nvs_solver_cond_path output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}/trajectories \
-  --num_inference_steps 50
-
-# # # generaiton
 # python generate.py \
 #   --image_folder data/${ITEM}/images \
-#   --trajectory_folder test \
+#   --trajectory_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}_merged/trajectories \
 #   --num_frames 25 \
-#   --output_folder output/${ITEM}/test \
-#   --checkpoint checkpoints/trajattn_temp.pth
+#   --output_folder output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}_merged \
+#   --checkpoint checkpoints/trajattn_temp.pth \
+#   --use_nvs_solver true \
+#   --nvs_solver_cond_path output/${ITEM}/${CAMERA_MOTION_MODE}_${DEGREE}/trajectories \
+#   --num_inference_steps 50
+
+# # generaiton
+python generate.py \
+  --image_folder /mnt/slurm_home/zqxiao/NVS_Solver2/example_imgs/camel/images \
+  --trajectory_folder test \
+  --num_frames 25 \
+  --output_folder output/${ITEM}/test_50f \
+  --checkpoint checkpoints/trajattn_temp.pth \
+  --use_nvs_solver \
+  --nvs_solver_cond_path /mnt/slurm_home/zqxiao/NVS_Solver2/example_imgs/camel/warp_camel_todown_05angle_fix \
+  --num_inference_steps 50
