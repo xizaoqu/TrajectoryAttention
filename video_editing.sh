@@ -7,9 +7,9 @@ python cotracker.py \
     --video_path data/${ITEM}/${ITEM}.mp4 \
     --output_path output/${ITEM}/trajectories
 
-# # generaiton
+# generaiton
 python generate.py \
-  --image_folder data/${ITEM}/images \
+  --image_folder data/${ITEM}/editing_frame \
   --trajectory_folder output/${ITEM}/trajectories \
   --num_frames 25 \
   --output_folder output/${ITEM}/ \
