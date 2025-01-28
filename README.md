@@ -46,7 +46,7 @@ enabling explicit and fine-grained control over the motion in the generated vide
 
 1. Create a Conda Environment
 
-This codebase is tested with the versions of PyTorch 1.13.1+cu117.
+This codebase is tested with the versions of PyTorch 2.1.0+cu121.
 
 ```
 conda create -n trajattn python==3.10
