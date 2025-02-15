@@ -99,14 +99,13 @@ sh video_editing.sh
 If you find our work helpful, please cite:
 
 ```bibtex
-@misc{xiao2024trajectoryattentionfinegrainedvideo,
-      title={Trajectory Attention for Fine-grained Video Motion Control}, 
-      author={Zeqi Xiao and Wenqi Ouyang and Yifan Zhou and Shuai Yang and Lei Yang and Jianlou Si and Xingang Pan},
-      year={2024},
-      eprint={2411.19324},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2411.19324}, 
+@inproceedings{
+xiao2025trajectory,
+title={Trajectory attention for fine-grained video motion control},
+author={Zeqi Xiao and Wenqi Ouyang and Yifan Zhou and Shuai Yang and Lei Yang and Jianlou Si and Xingang Pan},
+booktitle={The Thirteenth International Conference on Learning Representations},
+year={2025},
+url={https://openreview.net/forum?id=2z1HT5lw5M}
 }
 ```
 
