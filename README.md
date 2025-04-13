@@ -16,7 +16,7 @@
 
 <p align="center">
   <!-- <a href="https://arxiv.org/abs/2405.14864" target='_blank'>
-    <img src="https://img.shields.io/badge/arXiv-2405.14864-blue?">
+    <img src="https://img.shields.io/badge/arXiv-2405-14864-blue?">
   </a> -->
   <a href="https://xizaoqu.github.io/trajattn/" target='_blank'>
     <img src="https://img.shields.io/badge/Project-&#x1F680-blue">
