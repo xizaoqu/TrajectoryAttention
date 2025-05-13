@@ -56,6 +56,9 @@ pip install -r requirements.txt
 
 2. Download model weights
 Download model weights from [huggingface](https://huggingface.co/zeqixiao/TrajectoryAttention).
+```
+wget https://huggingface.co/zeqixiao/TrajectoryAttention/resolve/main/trajattn_temp.pth?download=true
+```
 
 3. Clone Relevant Repositories and Download Checkpoints
 
@@ -68,7 +71,14 @@ wget https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/
 cp depth_anything/run.py Depth-Anything-V2/run.py
 ```
 
-Save the checkpoints to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
+4. Save the checkpoints to the `checkpoints/` directory. You can also modify the checkpoint path in the running scripts if needed.
+
+```
+mkdir checkpoints
+mv depth_anything_v2_vitl.pth\?download\=true checkpoints/depth_anything_v2_vitl.pth
+mv trajattn_temp.pth\?download\=true checkpoints/trajattn_temp.pth
+```
+
 ## Runnig
 
 To control camera motion on images, execute the following script
